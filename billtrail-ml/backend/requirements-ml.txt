@@ -1,0 +1,11 @@
+# Machine-learning part only (no website libraries). Python 3.11.
+pydantic>=2.7
+pydantic-settings>=2.3
+httpx>=0.27
+anthropic>=0.40
+opencv-python-headless>=4.9
+numpy>=1.26
+pillow>=10.3
+pytesseract>=0.3.10
+pypdfium2>=4.30
+pytest>=8.2

@@ -1,0 +1,3 @@
+# Optional: only if OCR_ENGINE=paddle. app/ocr.py uses the PaddleOCR 2.x API.
+paddlepaddle==2.6.1
+paddleocr==2.8.1

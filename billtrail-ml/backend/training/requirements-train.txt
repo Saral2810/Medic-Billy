@@ -1,0 +1,4 @@
+# Fine-tuning only (GPU machine or Colab/Kaggle). Unsloth pulls in torch, transformers, peft, bitsandbytes.
+unsloth
+trl
+pillow
