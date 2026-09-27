@@ -1,7 +1,6 @@
 # BillTrail — Machine Learning Part
 
-This folder is the **machine learning part** of BillTrail (capstone: *Healthcare Invoice Standardisation and
-Paper Trail Creation*). Its job: teach an open-source vision-language model, **Qwen3-VL**, to read Indian
+This folder is the **machine learning part** of BillTrail. Its job: teach an open-source vision-language model, **Qwen3-VL**, to read Indian
 medical bills and fill in our **standard bill format**, then measure how well it does.
 
 > In the shared `billtrail` repo, keep this file as `docs/ML_README.md` so it doesn't replace the main README.
@@ -97,7 +96,7 @@ and run with `--model qwen3vl-base`.
 python -m eval.evaluate --truth data/qwen_dataset/test_truth --pred data/pred/qwen_ft --csv qwen_ft.csv
 ```
 
-## Team rules (these three files are shared with the rest of the system)
+## Some rules (these three files are shared with the rest of the system)
 
 1. **`extract.py` → `INSTRUCTIONS` (the prompt)** and **`preprocess.py` → `prepare_for_model()`**: the model is
    trained on exactly this prompt and this image cleaning, and the live worker uses them too. If you change either,
@@ -131,12 +130,3 @@ git push origin ml            # then open a pull request on GitHub: ml -> main
 - `training/export_verified.py` (exports human-checked real bills from the website) lives in the full repo, because
   it needs the backend running.
 
-## References
-
-- Qwen Team, Qwen3-VL model cards — https://huggingface.co/Qwen
-- Hu et al. (2021), LoRA, arXiv:2106.09685 · Dettmers et al. (2023), QLoRA, arXiv:2305.14314
-- Unsloth, Qwen3-VL fine-tuning guide — https://docs.unsloth.ai/models/qwen3-vl
-- vLLM documentation — https://docs.vllm.ai
-- Hinton et al. (2015), Distilling the Knowledge in a Neural Network, arXiv:1503.02531
-- Smith (2007), An Overview of the Tesseract OCR Engine, ICDAR
-- GSTN, GSTIN structure and check digit — https://www.gst.gov.in
