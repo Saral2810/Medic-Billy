@@ -3,12 +3,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { isMock } from "@/lib/api";
 
-const links = [["/upload", "Add a bill"], ["/bills", "Bills"], ["/audit", "Paper trail"]] as const;
+const links = [["/upload", "Add a bill"], ["/bills", "Bills"], ["/emergency", "Emergency lookup"], ["/audit", "Paper trail"]] as const;
 
 export default function Nav() {
   const path = usePathname();
   return (
-    <header className="border-b border-line bg-panel">
+    <header className="border-b border-line bg-panel print:hidden">
       <div className="mx-auto flex max-w-6xl items-center gap-8 px-4 py-3">
         <Link href="/upload" className="text-lg font-semibold tracking-tight text-accent">BillTrail</Link>
         <nav className="flex gap-1">
