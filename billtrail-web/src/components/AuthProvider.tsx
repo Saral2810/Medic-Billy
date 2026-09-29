@@ -31,6 +31,12 @@ export default function AuthProvider({ children }: { children: React.ReactNode }
   const signIn = (s: Session) => { setToken(s.token); setUser(s.user); };
   const signOut = () => { clearToken(); setUser(null); router.replace("/login"); };
 
-  if (!ready || (!user && path !== "/login")) return <p className="p-8 text-muted" role="status">Loading…</p>;
+  if (!ready || (!user && path !== "/login")) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center" role="status">
+        <span className="size-6 animate-spin rounded-full border-2 border-line border-t-accent motion-reduce:animate-none" />
+      </div>
+    );
+  }
   return <AuthContext.Provider value={{ user, signIn, signOut }}>{children}</AuthContext.Provider>;
 }

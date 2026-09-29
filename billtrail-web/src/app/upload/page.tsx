@@ -8,6 +8,7 @@ import OriginalViewer from "@/components/OriginalViewer";
 import BillEditor from "@/components/BillEditor";
 import CheckList from "@/components/CheckList";
 import StatusBadge from "@/components/StatusBadge";
+import { Skeleton } from "@/components/Skeleton";
 
 type Phase = "idle" | "processing" | "done" | "error";
 
@@ -65,10 +66,15 @@ export default function UploadPage() {
         <div className="lg:sticky lg:top-6 lg:self-start">{file && <OriginalViewer {...file} />}</div>
 
         {phase === "processing" && (
-          <div className="card flex flex-col items-center justify-center gap-3 p-12 text-center" role="status">
-            <span className="size-8 animate-spin rounded-full border-2 border-line border-t-accent motion-reduce:animate-none" />
-            <p className="font-medium">Processing…</p>
-            <p className="text-sm text-muted">You can leave this page. The bill will appear under Bills when it is ready.</p>
+          <div className="space-y-4">
+            <div className="card flex flex-col items-center justify-center gap-3 p-12 text-center" role="status">
+              <span className="size-8 animate-spin rounded-full border-2 border-line border-t-accent motion-reduce:animate-none" />
+              <p className="font-medium">Processing…</p>
+              <p className="text-sm text-muted">You can leave this page. The bill will appear under Bills when it is ready.</p>
+            </div>
+            <div className="card space-y-3 p-4">
+              <Skeleton className="h-4 w-1/3" /><Skeleton className="h-4 w-full" /><Skeleton className="h-4 w-5/6" /><Skeleton className="h-4 w-2/3" />
+            </div>
           </div>
         )}
 

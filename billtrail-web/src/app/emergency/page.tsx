@@ -3,18 +3,21 @@ import { useEffect, useMemo, useState } from "react";
 import { api } from "@/lib/api";
 import type { Bill } from "@/types/bill";
 import { day } from "@/lib/format";
+import { Skeleton, SkeletonRows } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 interface Row { name: string; last: string; times: number; doctors: Set<string>; pharmacies: Set<string>; unverified: boolean }
 const key = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
 
 export default function EmergencyLookup() {
   const [bills, setBills] = useState<Bill[] | null>(null);
+  const [error, setError] = useState("");
   const [q, setQ] = useState("");
   const [patient, setPatient] = useState("");
   const [unverified, setUnverified] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  useEffect(() => { api.listBills().then(setBills); }, []);
+  useEffect(() => { api.listBills().then(setBills).catch((e) => setError(e.message)); }, []);
 
   const patients = useMemo(
     () => [...new Set((bills ?? []).map((b) => b.patientName.trim()).filter(Boolean))].sort(),
@@ -45,7 +48,8 @@ export default function EmergencyLookup() {
     setCopied(true); setTimeout(() => setCopied(false), 2000);
   }
 
-  if (!bills) return <p className="text-muted" role="status">Loading…</p>;
+  if (error) return <p role="alert" className="text-bad">{error}</p>;
+  if (!bills) return <div><Skeleton className="mb-6 h-8 w-64" /><SkeletonRows rows={3} cols={2} /></div>;
 
   return (
     <div>
@@ -53,15 +57,20 @@ export default function EmergencyLookup() {
         <h1 className="mb-1 text-2xl font-semibold tracking-tight">Emergency lookup</h1>
         <p className="mb-5 max-w-2xl text-muted">Pick a patient to see every medicine on their saved bills. Useful when someone cannot say what they take.</p>
 
-        <input className="input max-w-sm" placeholder="Search patient name" aria-label="Search patient" value={q} onChange={(e) => setQ(e.target.value)} />
-        <div className="mt-3 flex flex-wrap gap-2">
-          {shown.map((p) => (
-            <button key={p} onClick={() => setPatient(p)} aria-pressed={p === patient}
-              className={`btn ${p === patient ? "btn-primary" : "btn-ghost"}`}>{p}</button>
-          ))}
-          {patients.length === 0 && <p className="text-sm text-muted">No patient names yet. Add a bill first.</p>}
-          {patients.length > 0 && shown.length === 0 && <p className="text-sm text-muted">No patient matches “{q}”.</p>}
-        </div>
+        {patients.length === 0 ? (
+          <EmptyState title="No patients yet" body="Once bills are added, you can look patients up here." action={{ href: "/upload", label: "Add a bill" }} />
+        ) : (
+          <>
+            <input className="input w-full sm:max-w-sm" placeholder="Search patient name" aria-label="Search patient" value={q} onChange={(e) => setQ(e.target.value)} />
+            <div className="mt-3 flex flex-wrap gap-2">
+              {shown.map((p) => (
+                <button key={p} onClick={() => setPatient(p)} aria-pressed={p === patient}
+                  className={`btn ${p === patient ? "btn-primary" : "btn-ghost"}`}>{p}</button>
+              ))}
+              {shown.length === 0 && <p className="text-sm text-muted">No patient matches “{q}”.</p>}
+            </div>
+          </>
+        )}
       </div>
 
       {patient && (
@@ -81,25 +90,37 @@ export default function EmergencyLookup() {
           </div>
 
           {rows.length === 0 ? (
-            <p className="card p-6 text-sm text-muted">No verified bills for this patient. Tick “Include bills that need review” to see unchecked ones.</p>
+            <EmptyState title="No verified bills for this patient" body="Tick “Include bills that need review” to see unchecked ones." />
           ) : (
-            <div className="card overflow-x-auto">
-              <table className="w-full min-w-[640px] text-sm">
-                <thead className="border-b border-line text-left text-xs text-muted">
-                  <tr><th className="p-3 font-normal">Medicine</th><th className="p-3 font-normal">Last bought</th><th className="p-3 font-normal">Times</th>
-                    <th className="p-3 font-normal">Prescribed by</th><th className="p-3 font-normal">Pharmacy</th></tr>
-                </thead>
-                <tbody>
-                  {rows.map((r) => (
-                    <tr key={r.name} className="border-b border-line last:border-0">
-                      <td className="p-3 font-medium">{r.name}{r.unverified && <span className="ml-2 rounded bg-warn/10 px-1.5 py-0.5 text-xs font-normal text-warn">Unverified</span>}</td>
-                      <td className="p-3">{day(r.last)}</td><td className="p-3">{r.times}</td>
-                      <td className="p-3">{[...r.doctors].join(", ") || "-"}</td><td className="p-3">{[...r.pharmacies].join(", ") || "-"}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <>
+              <div className="card hidden overflow-x-auto sm:block">
+                <table className="w-full min-w-[640px] text-sm">
+                  <thead className="border-b border-line text-left text-xs text-muted">
+                    <tr><th className="p-3 font-normal">Medicine</th><th className="p-3 font-normal">Last bought</th><th className="p-3 font-normal">Times</th>
+                      <th className="p-3 font-normal">Prescribed by</th><th className="p-3 font-normal">Pharmacy</th></tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <tr key={r.name} className="border-b border-line last:border-0">
+                        <td className="p-3 font-medium">{r.name}{r.unverified && <span className="ml-2 rounded bg-warn/10 px-1.5 py-0.5 text-xs font-normal text-warn">Unverified</span>}</td>
+                        <td className="p-3">{day(r.last)}</td><td className="p-3">{r.times}</td>
+                        <td className="p-3">{[...r.doctors].join(", ") || "-"}</td><td className="p-3">{[...r.pharmacies].join(", ") || "-"}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <ul className="space-y-2 sm:hidden">
+                {rows.map((r) => (
+                  <li key={r.name} className="card p-3">
+                    <p className="font-medium">{r.name}{r.unverified && <span className="ml-2 rounded bg-warn/10 px-1.5 py-0.5 text-xs font-normal text-warn">Unverified</span>}</p>
+                    <p className="mt-1 text-xs text-muted">Last {day(r.last)} · {r.times}x</p>
+                    {r.doctors.size > 0 && <p className="mt-1 text-sm">Dr: {[...r.doctors].join(", ")}</p>}
+                    {r.pharmacies.size > 0 && <p className="text-sm text-muted">{[...r.pharmacies].join(", ")}</p>}
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
           <p className="mt-4 text-xs text-muted">Built from purchase records only. It may be incomplete, it does not show doses, and it is not a prescription list. Confirm with the patient or their doctor.</p>
         </section>
