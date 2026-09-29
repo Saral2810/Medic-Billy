@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import Nav from "@/components/Nav";
+import AuthProvider from "@/components/AuthProvider";
 import "./globals.css";
 
 const sans = IBM_Plex_Sans({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-plex-sans" });
@@ -12,8 +13,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" className={`${sans.variable} ${mono.variable}`}>
       <body className="min-h-screen antialiased">
-        <Nav />
-        <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        <AuthProvider>
+          <Nav />
+          <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+        </AuthProvider>
       </body>
     </html>
   );

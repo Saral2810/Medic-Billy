@@ -6,9 +6,12 @@ import type { Bill, BillStatus } from "@/types/bill";
 import StatusBadge from "@/components/StatusBadge";
 import { day, inr } from "@/lib/format";
 import { downloadJson } from "@/lib/fhir";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function BillsPage() {
   const [bills, setBills] = useState<Bill[] | null>(null);
+  const { user } = useAuth();
+  const staff = user?.role !== "patient";
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<BillStatus | "all">("all");
   const [sel, setSel] = useState<Set<string>>(new Set());
@@ -56,7 +59,7 @@ export default function BillsPage() {
         <table className="w-full min-w-[760px] text-sm">
           <thead className="border-b border-line text-left text-xs text-muted">
             <tr><th className="w-10 p-3" /><th className="p-3 font-normal">Pharmacy</th><th className="p-3 font-normal">Invoice</th><th className="p-3 font-normal">Date</th>
-              <th className="p-3 font-normal">Patient</th><th className="p-3 text-right font-normal">Total</th><th className="p-3 font-normal">Status</th></tr>
+              <th className="p-3 font-normal">Patient</th>{staff && <th className="p-3 font-normal">Uploaded by</th>}<th className="p-3 text-right font-normal">Total</th><th className="p-3 font-normal">Status</th></tr>
           </thead>
           <tbody>
             {rows.map((b) => (
@@ -65,12 +68,12 @@ export default function BillsPage() {
                 <td className="p-3"><div className="font-medium">{b.pharmacy.name || "Reading…"}</div><div className="font-mono text-xs text-muted">{b.pharmacy.gstin}</div></td>
                 <td className="p-3"><Link className="text-accent hover:underline" href={`/bills/${b.id}`}>{b.invoiceNumber || b.fileName}</Link></td>
                 <td className="p-3">{day(b.invoiceDate)}</td>
-                <td className="p-3">{b.patientName}</td>
+                <td className="p-3">{b.patientName}</td>{staff && <td className="p-3">{b.owner ?? "-"}</td>}
                 <td className="p-3 text-right">{inr(b.totals.grandTotal)}</td>
                 <td className="p-3"><StatusBadge status={b.status} /></td>
               </tr>
             ))}
-            {rows.length === 0 && <tr><td colSpan={7} className="p-8 text-center text-muted">No bills match. Clear the search or <Link className="text-accent underline" href="/upload">add a bill</Link>.</td></tr>}
+            {rows.length === 0 && <tr><td colSpan={staff ? 8 : 7} className="p-8 text-center text-muted">No bills match. Clear the search or <Link className="text-accent underline" href="/upload">add a bill</Link>.</td></tr>}
           </tbody>
         </table>
       </div>

@@ -1,9 +1,10 @@
-"""SQLite storage for bills and the hash-chained audit log. Swap for Postgres later; keep these function names."""
+"""SQLite storage for users, bills and the hash-chained audit log. Swap for Postgres later; keep these function names."""
 import hashlib
 import json
 import os
 import sqlite3
 import threading
+import uuid
 from contextlib import contextmanager
 from datetime import datetime, timezone
 from pathlib import Path
@@ -32,10 +33,13 @@ def init():
     UPLOADS.mkdir(parents=True, exist_ok=True)
     with conn() as c:
         c.executescript("""
+        CREATE TABLE IF NOT EXISTS users(
+          id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, name TEXT NOT NULL, role TEXT NOT NULL,
+          pw_hash TEXT NOT NULL, created_at TEXT);
         CREATE TABLE IF NOT EXISTS bills(
-          id TEXT PRIMARY KEY, sha256 TEXT UNIQUE NOT NULL, file_name TEXT, content_type TEXT, file_path TEXT,
+          id TEXT PRIMARY KEY, owner_id TEXT NOT NULL, sha256 TEXT NOT NULL, file_name TEXT, content_type TEXT, file_path TEXT,
           uploaded_at TEXT, status TEXT, bill_json TEXT, checks_json TEXT, reviewed_by TEXT, error TEXT,
-          gstin TEXT, invoice_number TEXT, invoice_date TEXT);
+          gstin TEXT, invoice_number TEXT, invoice_date TEXT, UNIQUE(owner_id, sha256));
         CREATE TABLE IF NOT EXISTS audit(
           seq INTEGER PRIMARY KEY, action TEXT, bill_id TEXT, actor TEXT, at TEXT, prev_hash TEXT, hash TEXT);
         """)
@@ -45,15 +49,51 @@ def now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def insert(bill_id, sha, name, ctype, path):
+# ---- users ----
+def create_user(email, name, role, pw_hash) -> dict:
+    uid = uuid.uuid4().hex[:12]
     with conn() as c:
-        c.execute("INSERT INTO bills(id, sha256, file_name, content_type, file_path, uploaded_at, status) VALUES (?,?,?,?,?,?,'processing')",
-                  (bill_id, sha, name, ctype, path, now()))
+        c.execute("INSERT INTO users VALUES (?,?,?,?,?,?)", (uid, email, name, role, pw_hash, now()))
+    return {"id": uid, "email": email, "name": name, "role": role}
 
 
-def by_sha(sha):
+def user_login_row(email):
     with conn() as c:
-        return c.execute("SELECT id FROM bills WHERE sha256=?", (sha,)).fetchone()
+        r = c.execute("SELECT * FROM users WHERE email=?", (email,)).fetchone()
+    return dict(r) if r else None
+
+
+def user_by_id(uid):
+    with conn() as c:
+        r = c.execute("SELECT id, email, name, role FROM users WHERE id=?", (uid,)).fetchone()
+    return dict(r) if r else None
+
+
+def list_users():
+    with conn() as c:
+        return [dict(r) for r in c.execute("SELECT id, email, name, role FROM users ORDER BY created_at")]
+
+
+def count_users() -> int:
+    with conn() as c:
+        return c.execute("SELECT COUNT(*) FROM users").fetchone()[0]
+
+
+def set_role(uid, role):
+    with conn() as c:
+        c.execute("UPDATE users SET role=? WHERE id=?", (role, uid))
+
+
+# ---- bills ----
+def insert(bill_id, owner_id, sha, name, ctype, path):
+    with conn() as c:
+        c.execute("INSERT INTO bills(id, owner_id, sha256, file_name, content_type, file_path, uploaded_at, status) VALUES (?,?,?,?,?,?,?,'processing')",
+                  (bill_id, owner_id, sha, name, ctype, path, now()))
+
+
+def by_sha(sha, owner_id):
+    with conn() as c:
+        return c.execute("SELECT id FROM bills WHERE sha256=? AND owner_id=?", (sha, owner_id)).fetchone()
 
 
 def get(bill_id):
@@ -61,8 +101,11 @@ def get(bill_id):
         return c.execute("SELECT * FROM bills WHERE id=?", (bill_id,)).fetchone()
 
 
-def list_all():
+def list_for(owner_id=None):
+    """All bills, or only one person's."""
     with conn() as c:
+        if owner_id:
+            return c.execute("SELECT * FROM bills WHERE owner_id=? ORDER BY uploaded_at DESC", (owner_id,)).fetchall()
         return c.execute("SELECT * FROM bills ORDER BY uploaded_at DESC").fetchall()
 
 
@@ -79,19 +122,22 @@ def save_failure(bill_id, message):
         c.execute("UPDATE bills SET status='failed', error=? WHERE id=?", (message, bill_id))
 
 
-def find_duplicate(gstin, number, exclude=None):
+def find_duplicate(gstin, number, owner_id, exclude=None):
+    """Same GSTIN + invoice number among this person's own bills (never reveals other people's bills)."""
     if not gstin or not number:
         return None
     with conn() as c:
-        r = c.execute("SELECT id, invoice_date FROM bills WHERE gstin=? AND invoice_number=? AND id<>?",
-                      (gstin, number, exclude or "")).fetchone()
+        r = c.execute("SELECT id, invoice_date FROM bills WHERE gstin=? AND invoice_number=? AND owner_id=? AND id<>?",
+                      (gstin, number, owner_id, exclude or "")).fetchone()
     return dict(r) if r else None
 
 
 def to_api(r) -> dict:
+    owner = user_by_id(r["owner_id"])
     return {
         "id": r["id"], "status": r["status"], "file_name": r["file_name"], "content_type": r["content_type"],
         "sha256": r["sha256"], "uploaded_at": r["uploaded_at"], "reviewed_by": r["reviewed_by"], "error": r["error"],
+        "owner": {"id": owner["id"], "name": owner["name"]} if owner else None,
         "bill": json.loads(r["bill_json"]) if r["bill_json"] else StandardBill().model_dump(),
         "checks": json.loads(r["checks_json"] or "[]"),
     }

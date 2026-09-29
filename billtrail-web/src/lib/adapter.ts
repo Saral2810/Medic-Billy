@@ -15,7 +15,7 @@ export interface StandardBill {
 export interface ApiBill {
   id: string; status: "processing" | "verified" | "review" | "failed";
   file_name: string; content_type: string; sha256: string; uploaded_at: string;
-  reviewed_by: string | null; error: string | null;
+  reviewed_by: string | null; error: string | null; owner?: { id: string; name: string } | null;
   bill: StandardBill; checks: { code: string; label: string; status: "pass" | "warn" | "fail"; detail: string }[];
 }
 
@@ -36,7 +36,7 @@ export function fromApi(a: ApiBill, base: string): Bill {
     id: a.id, status: a.status === "review" ? "needs_review" : a.status,
     fileName: a.file_name, fileUrl: `${base}/bills/${a.id}/file`, fileType: a.content_type, sha256: a.sha256, uploadedAt: a.uploaded_at,
     confidence: b.confidence ?? 1, unreadable: b.unreadable.map((k) => KEYS[k] ?? k),
-    reviewedBy: a.reviewed_by ?? undefined, error: a.error ?? undefined,
+    reviewedBy: a.reviewed_by ?? undefined, error: a.error ?? undefined, owner: a.owner?.name,
     pharmacy: { name: s(b.seller.name), address: s(b.seller.address), gstin: s(b.seller.gstin), drugLicence: s(b.seller.drug_licence_no), phone: s(b.seller.phone) },
     invoiceNumber: s(b.invoice.number), invoiceDate: s(b.invoice.date), billType: b.bill_type ?? "pharmacy",
     patientName: s(b.patient_name), doctorName: s(b.doctor_name),
